@@ -35,23 +35,23 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     public Mono<Hotel> update(Hotel hotel) {
-        return this.hotelRepository.findOne(hotel.getId())
+        return this.hotelRepository.findById(hotel.getId())
                 .flatMap(existingHotel ->
                         this.hotelByLetterRepository.delete(new HotelByLetter(existingHotel).getHotelByLetterKey())
                                 .then(this.hotelByLetterRepository.save(new HotelByLetter(hotel)))
-                                .then(this.hotelRepository.update(hotel)));
+                                .then(this.hotelRepository.save(hotel)));
     }
 
     @Override
     public Mono<Hotel> findOne(UUID uuid) {
-        return this.hotelRepository.findOne(uuid);
+        return this.hotelRepository.findById(uuid);
     }
 
     @Override
     public Mono<Boolean> delete(UUID uuid) {
-        Mono<Hotel> hotelMono = this.hotelRepository.findOne(uuid);
+        Mono<Hotel> hotelMono = this.hotelRepository.findById(uuid);
         return hotelMono
-                .flatMap((Hotel hotel) -> this.hotelRepository.delete(hotel.getId())
+                .flatMap((Hotel hotel) -> this.hotelRepository.delete(hotel)
                 .then(this.hotelByLetterRepository
                         .delete(new HotelByLetter(hotel).getHotelByLetterKey())));
     }

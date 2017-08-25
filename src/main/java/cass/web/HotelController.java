@@ -59,4 +59,10 @@ public class HotelController {
             @PathVariable("state") String state) {
         return this.hotelService.findHotelsInState(state);
     }
+
+    @GetMapping(path = "/bookfromstate/{state}")
+    public Mono<Hotel> bookAnyHotelInState(
+            @PathVariable("state") String state) {
+        return this.hotelService.bookOneHotel(state);
+    }
 }

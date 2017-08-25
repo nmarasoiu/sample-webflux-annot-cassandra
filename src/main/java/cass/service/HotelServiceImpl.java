@@ -5,6 +5,7 @@ import cass.domain.HotelByLetter;
 import cass.repository.HotelByLetterRepository;
 import cass.repository.HotelRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -14,8 +15,9 @@ import java.util.UUID;
 public class HotelServiceImpl implements HotelService {
 
     private final HotelRepository hotelRepository;
-
     private final HotelByLetterRepository hotelByLetterRepository;
+    private final WebClient bookingClient = WebClient
+            .create("https://www.google.ro/");
 
     public HotelServiceImpl(HotelRepository hotelRepository,
                             HotelByLetterRepository hotelByLetterRepository) {
@@ -29,7 +31,7 @@ public class HotelServiceImpl implements HotelService {
             hotel.setId(UUID.randomUUID());
         }
         Mono<Hotel> saved = this.hotelRepository.save(hotel);
-        saved.then(this.hotelByLetterRepository.save(new HotelByLetter(hotel)));
+        saved.then(this.hotelByLetterRepository.save(new HotelByLetter(hotel))).subscribe();
         return saved;
     }
 
@@ -52,8 +54,8 @@ public class HotelServiceImpl implements HotelService {
         Mono<Hotel> hotelMono = this.hotelRepository.findById(uuid);
         return hotelMono
                 .flatMap((Hotel hotel) -> this.hotelRepository.delete(hotel)
-                .then(this.hotelByLetterRepository
-                        .delete(new HotelByLetter(hotel).getHotelByLetterKey())));
+                        .then(this.hotelByLetterRepository
+                                .delete(new HotelByLetter(hotel).getHotelByLetterKey())));
     }
 
     @Override
@@ -64,5 +66,26 @@ public class HotelServiceImpl implements HotelService {
     @Override
     public Flux<Hotel> findHotelsInState(String state) {
         return this.hotelRepository.findByState(state);
+    }
+
+    @Override
+    public Mono<Hotel> bookOneHotel(String state) {
+        return findHotelsInState(state)
+                .concatMap(hotel -> book(hotel))
+                .next();
+    }
+
+    private Mono<Hotel> book(Hotel hotel) {
+        return bookingClient.get()
+                .uri("search?q=book+me+this+hotel+{hotel}", hotel.getName())
+                .exchange()
+                .flatMap(response -> response.bodyToFlux(String.class).next())
+                .doOnSuccess(text -> System.out.println(text))
+                .filter(text -> isBookedSuccesful(text))
+                .map(text -> hotel);
+    }
+
+    private boolean isBookedSuccesful(String text) {
+        return text.hashCode() % 21 != 0;
     }
 }

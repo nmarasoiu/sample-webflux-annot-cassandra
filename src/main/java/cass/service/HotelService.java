@@ -15,4 +15,6 @@ public interface HotelService {
 
     Flux<HotelByLetter> findHotelsStartingWith(String letter);
     Flux<Hotel> findHotelsInState(String state);
+
+    Mono<Hotel> bookOneHotel(String state);
 }
